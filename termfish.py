@@ -346,7 +346,16 @@ def make_row(name, qualities, bg, count=0, new_qualities=None):
     return f"{name_part}{cells} {count_str}"
 
 
-def make_stats(snapshot):
+def format_duration(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    if hours > 0:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    return f"{minutes}m {secs:02d}s"
+
+
+def make_stats(snapshot, total_caught, mtime, session):
     total_fish = len(snapshot)
     if total_fish == 0:
         return ""
@@ -372,16 +381,25 @@ def make_stats(snapshot):
 
     total_pct = (total_owned / total_slots) * 100 if total_slots else 0
     lines.append(f"  {'':12} {'':20} {'':5}")
-    bar_filled = round(total_pct / 5)
+    bar_filled = int(total_pct / 5)
     bar_empty = 20 - bar_filled
     bar = f"{WHITE}{chr(0x2588) * bar_filled}{DIM}{chr(0x2591) * bar_empty}{RESET}"
     lines.append(f"  {BOLD}{WHITE}{'Total':<12}{RESET} {bar} {BOLD}{WHITE}{total_pct:5.1f}%{RESET}")
-    lines.append(f"  {DIM}{total_owned}/{total_slots} uniques{RESET}")
+    lines.append(f"  {DIM}{total_owned}/{total_slots} uniques \u2022 {total_caught} total{RESET}")
+
+    lines.append("")
+    timestamp = datetime.fromtimestamp(mtime).strftime("%H:%M:%S")
+    lines.append(f"  {DIM}last updated {timestamp}{RESET}")
+
+    elapsed = time.time() - session["start_time"]
+    session_catches = total_caught - session["start_catches"]
+    new_uniques = session["new_uniques"]
+    lines.append(f"  {DIM}this session: {format_duration(elapsed)} \u2022 {session_catches} catches \u2022 {new_uniques} new{RESET}")
 
     return "\n".join(lines)
 
 
-def build_display(snapshot, counts, total_caught, mtime, newly_obtained=None):
+def build_display(snapshot, counts, total_caught, mtime, session, newly_obtained=None):
     if newly_obtained is None:
         newly_obtained = {}
 
@@ -407,10 +425,7 @@ def build_display(snapshot, counts, total_caught, mtime, newly_obtained=None):
             lines.append(make_row(name, qualities, style["bg"], count, new_quals))
 
     lines.append("")
-    lines.append(make_stats(snapshot))
-    lines.append(f"  {DIM}total catches: {total_caught}{RESET}")
-    timestamp = datetime.fromtimestamp(mtime).strftime("%H:%M:%S")
-    lines.append(f"  {DIM}last updated {timestamp}{RESET}")
+    lines.append(make_stats(snapshot, total_caught, mtime, session))
 
     return "\n".join(lines)
 
@@ -427,8 +442,8 @@ def format_new_log(fish_id, location, new_qualities):
     return entries
 
 
-def full_draw(snapshot, counts, total_caught, mtime, log_lines, newly_obtained=None):
-    content = build_display(snapshot, counts, total_caught, mtime, newly_obtained)
+def full_draw(snapshot, counts, total_caught, mtime, log_lines, session, newly_obtained=None):
+    content = build_display(snapshot, counts, total_caught, mtime, session, newly_obtained)
     if log_lines:
         content += f"\n\n  {BOLD}{WHITE}NEW CATCHES{RESET}\n"
         for line in log_lines:
@@ -464,7 +479,13 @@ def main():
     prev_mtime = os.path.getmtime(save_path)
     log_lines = []
 
-    full_draw(prev_snapshot, prev_counts, total_caught, prev_mtime, log_lines)
+    session = {
+        "start_time": time.time(),
+        "start_catches": total_caught,
+        "new_uniques": 0,
+    }
+
+    full_draw(prev_snapshot, prev_counts, total_caught, prev_mtime, log_lines, session)
 
     try:
         while True:
@@ -492,10 +513,11 @@ def main():
                 fresh = new_qualities - old_qualities
                 if fresh:
                     newly_obtained[key] = fresh
+                    session["new_uniques"] += len(fresh)
                     location, fish_id = key
                     log_lines.extend(format_new_log(fish_id, location, fresh))
 
-            full_draw(new_snapshot, new_counts, total_caught, prev_mtime, log_lines, newly_obtained or None)
+            full_draw(new_snapshot, new_counts, total_caught, prev_mtime, log_lines, session, newly_obtained or None)
             prev_snapshot = new_snapshot
             prev_counts = new_counts
 
