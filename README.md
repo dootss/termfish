@@ -13,7 +13,8 @@ pip install -r requirements.txt
 python termfish.py
 ```
 
-<img width="591" height="1017" alt="image" src="https://github.com/user-attachments/assets/fe754eb9-b2b4-4f26-9474-01bcb7a75f6f" />
+<img width="710" height="1352" alt="image" src="https://github.com/user-attachments/assets/49e981ac-4450-4bfd-bcc5-8ae1dfb4bc1f" />
+
 
 ## contact
 
