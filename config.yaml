@@ -1,0 +1,16 @@
+# path to your webfishing save directory
+# usually here on windows
+save_directory: "%AppData%/Godot/app_userdata/webfishing_2_newver"
+
+# which save slot to read (1-4)
+save_slot: 1
+
+# how often code check the save file for changes (seconds)
+# note this is not how often it will update because the game autosaves every 5 minutes.
+poll_interval: 2
+
+# if u don't use windows terminal, this probably won't do anything. otherwise it'll change the tab color & name
+windows_terminal:
+  enabled: true
+  tab_title: "termfish"
+  tab_color: "FFB6C1"
